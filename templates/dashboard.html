@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalLink — Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dashboard-body">
+
+<!-- TOP NAV -->
+<nav class="topnav">
+    <div class="nav-brand">
+        <span class="logo-sm">LL</span>
+        <span>LocalLink</span>
+    </div>
+    <div class="nav-user">
+        <span class="user-badge">{{ full_name }} ({{ student_id }})</span>
+        <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+</nav>
+
+<div class="dashboard-layout">
+
+    <!-- LEFT: Chat Panel -->
+    <div class="panel chat-panel">
+        <div class="panel-header">
+            <h2>Group Chat</h2>
+            <span class="online-indicator" id="onlineCount">Connecting...</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            {% for msg in messages %}
+                {% if msg.student_id == student_id %}
+                    <div class="message message-own">
+                        <div class="msg-bubble">{{ msg.content }}</div>
+                        <div class="msg-meta">{{ msg.timestamp }}</div>
+                    </div>
+                {% else %}
+                    <div class="message message-other">
+                        <div class="msg-name">{{ msg.full_name }}</div>
+                        <div class="msg-bubble">{{ msg.content }}</div>
+                        <div class="msg-meta">{{ msg.timestamp }}</div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="chat-input-area">
+            <input
+                type="text"
+                id="messageInput"
+                placeholder="Type a message..."
+                autocomplete="off"
+                maxlength="500"
+            >
+            <button id="sendBtn" class="btn-send">Send</button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Files Panel -->
+    <div class="panel files-panel">
+        <div class="panel-header">
+            <h2>Files &amp; Resources</h2>
+        </div>
+
+        <!-- Auto-push notification area -->
+        <div id="pushNotification" class="push-notification hidden">
+            <span id="pushText"></span>
+            <button onclick="dismissPush()">Dismiss</button>
+        </div>
+
+        <div class="file-list" id="fileList">
+            {% if files %}
+                {% for file in files %}
+                <div class="file-item">
+                    <div class="file-icon">
+                        {% if file.file_type in ['pdf'] %}📄
+                        {% elif file.file_type in ['ppt', 'pptx'] %}📊
+                        {% elif file.file_type in ['doc', 'docx'] %}📝
+                        {% elif file.file_type in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
+                        {% elif file.file_type in ['mp4'] %}🎬
+                        {% elif file.file_type in ['mp3'] %}🎵
+                        {% else %}📎{% endif %}
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">{{ file.original_name }}</div>
+                        <div class="file-meta">
+                            {{ (file.file_size / 1024)|round(1) }} KB
+                            &nbsp;|&nbsp; {{ file.uploaded_at[:16] }}
+                        </div>
+                    </div>
+                    <a href="/download/{{ file.filename }}"
+                       class="btn-download" download>
+                        Download
+                    </a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No files uploaded yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Socket.IO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/static/js/chat.js"></script>
+<script>
+    const CURRENT_USER_ID = "{{ student_id }}";
+    const CURRENT_USER_NAME = "{{ full_name }}";
+</script>
+
+</body>
+</html>
