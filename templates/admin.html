@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalLink — Admin Panel</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dashboard-body">
+
+<nav class="topnav">
+    <div class="nav-brand">
+        <span class="logo-sm">LL</span>
+        <span>LocalLink Admin</span>
+    </div>
+    <div class="nav-user">
+        <span class="user-badge admin-badge">{{ full_name }} — ADMIN</span>
+        <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+</nav>
+
+<div class="admin-layout">
+
+    <!-- SECTION 1: Active Sessions -->
+    <div class="admin-card">
+        <div class="admin-card-header">Connected Users ({{ active_sessions|length }})</div>
+        {% if active_sessions %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Full Name</th>
+                    <th>Device IP</th>
+                    <th>Connected Since</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in active_sessions %}
+                <tr>
+                    <td>{{ s.student_id }}</td>
+                    <td>{{ s.full_name }}</td>
+                    <td>{{ s.device_ip }}</td>
+                    <td>{{ s.logged_in }}</td>
+                    <td>
+                        <form method="POST" action="/admin/force_logout/{{ s.student_id }}">
+                            <button class="btn-danger-sm">Force Logout</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="empty-state">No students currently connected.</div>
+        {% endif %}
+    </div>
+
+    <!-- SECTION 2: Upload File -->
+    <div class="admin-card">
+        <div class="admin-card-header">Upload File / Learning Material</div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                {% if msg.startswith('success:') %}
+                    <div class="alert alert-success">{{ msg[8:] }}</div>
+                {% elif msg.startswith('error:') %}
+                    <div class="alert alert-error">{{ msg[6:] }}</div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/upload" enctype="multipart/form-data" class="upload-form">
+            <div class="form-row">
+                <input type="file" name="file" required
+                       accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.mp4,.mp3,.txt,.zip">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="auto_push" value="1">
+                    Auto-push to all connected students
+                </label>
+                <button type="submit" class="btn-upload">Upload</button>
+            </div>
+            <div class="upload-hint">
+                Allowed: PDF, PPT, DOCX, XLS, Images, MP4, MP3, ZIP — Max 200MB
+            </div>
+        </form>
+
+        <!-- File List -->
+        <div class="file-list admin-file-list">
+            {% if files %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Uploaded</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in files %}
+                    <tr>
+                        <td>{{ f.original_name }}</td>
+                        <td>{{ f.file_type|upper }}</td>
+                        <td>{{ (f.file_size / 1024)|round(1) }} KB</td>
+                        <td>{{ f.uploaded_at[:16] }}</td>
+                        <td>
+                            <a href="/download/{{ f.filename }}" class="btn-sm">Download</a>
+                            <form method="POST" action="/files/delete/{{ f.id }}" style="display:inline;">
+                                <button class="btn-danger-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div class="empty-state">No files uploaded yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SECTION 3: Register Students -->
+    <div class="admin-card">
+        <div class="admin-card-header">Register Student Accounts</div>
+        <form method="POST" action="/admin/add_user" class="register-form">
+            <div class="form-row">
+                <input type="text" name="student_id" placeholder="ID Number (e.g. 2026-00001)" required>
+                <input type="text" name="full_name"  placeholder="Full Name" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="btn-add">Add Student</button>
+            </div>
+        </form>
+
+        <!-- Registered Students List -->
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID Number</th>
+                    <th>Full Name</th>
+                    <th>Registered</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.student_id }}</td>
+                    <td>{{ u.full_name }}</td>
+                    <td>{{ u.created_at[:10] }}</td>
+                    <td>
+                        <form method="POST" action="/admin/delete_user/{{ u.student_id }}">
+                            <button class="btn-danger-sm">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Auto-push Socket trigger if redirected with push=1 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get("push") === "1") {
+    const socket = io();
+    socket.on("connect", () => {
+        socket.emit("file_pushed", {
+            filename:      urlParams.get("fname"),
+            original_name: urlParams.get("oname"),
+            file_type:     urlParams.get("ftype"),
+            uploaded_by:   "Teacher"
+        });
+        setTimeout(() => socket.disconnect(), 1000);
+    });
+}
+</script>
+
+</body>
+</html>
