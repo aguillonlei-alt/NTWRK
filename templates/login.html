@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalLink — Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-body">
+
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logo-mark">LL</div>
+            <h1>LocalLink</h1>
+            <p>Offline Local Network System</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                {% if msg.startswith('error:') %}
+                    <div class="alert alert-error">{{ msg[6:] }}</div>
+                {% elif msg.startswith('conflict:') %}
+                    <div class="alert alert-conflict">{{ msg[9:] }}</div>
+                {% else %}
+                    <div class="alert alert-success">{{ msg }}</div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="student_id">ID Number</label>
+                <input
+                    type="text"
+                    id="student_id"
+                    name="student_id"
+                    placeholder="e.g. 2026-00001"
+                    required
+                    autocomplete="off"
+                >
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                >
+            </div>
+            <button type="submit" class="btn-login">Connect to LocalLink</button>
+        </form>
+
+        <div class="login-footer">
+            <span class="dot dot-offline"></span>
+            No Internet Required &nbsp;|&nbsp; Local Access Only
+        </div>
+    </div>
+
+</body>
+</html>
